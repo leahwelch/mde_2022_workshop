@@ -1,18 +1,5 @@
-d3.csv("./data/US_Textile_Fiber_Trade.csv").then(function (data) {
+d3.csv("./data/US_Textile_Fiber_Trade.csv", parse).then(function (data) {
     console.log(data);
-
-    // //before we create our distribution, we need to set the xScale based on the possible values
-    // const xScale = d3.scaleLinear()
-    //     .domain([0, d3.max(data, d => d.value)])
-
-    // //we need to create a binned dataset using the d3.histogram() method
-    // const histogramValues = d3.histogram()
-    //     .value(d => d.value) //sets the distribution based on a dimension of the data - value
-    //     .domain(xScale.domain()) //based on the xScale
-    //     .thresholds(xScale.ticks(100)) //how many bins
-
-    // const bins = histogramValues(data)
-    // console.log(bins)
 
 });
 
