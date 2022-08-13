@@ -8,6 +8,8 @@ const svg = d3.select("#chart")
     .attr("width", width)
     .attr("height", height);
 
+const btn = d3.select("#btn");
+
 d3.csv("./data/gapminder.csv", parse).then(function (data) {
 
     /* filter subset of data, grabbing only the rows where the country = China */
