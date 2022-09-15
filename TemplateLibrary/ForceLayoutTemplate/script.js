@@ -21,7 +21,7 @@ d3.csv("./data/one-year-of-recipes.csv", parseCSV).then(function (data) {
     /* 
     CREATE AN ARRAY OF NODES 
     
-    Here, each node is a unique recipe.
+    Here, each node is a unique recipe. Nodes do not require ingredient data, that comes in with the links
 
     */
     let nodes = [];
