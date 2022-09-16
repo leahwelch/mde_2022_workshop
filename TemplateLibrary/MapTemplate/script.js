@@ -1,5 +1,14 @@
-// HELPER FUNCTION TO HANDLE DIFFERENT NAMING CONVENTIONS FOR STATES
+/*
+DEFINING THE DIMENSIONS OF THE SVG and CREATING THE SVG CANVAS
+*/
+const mapWidth = document.querySelector("#chart").clientWidth;
+const mapHeight = document.querySelector("#chart").clientHeight;
+const margin = { top: 50, left: 150, right: 50, bottom: 150 };
+const svg = d3.select("#chart")
+    .attr("width", mapWidth)
+    .attr("height", mapHeight);
 
+// HELPER FUNCTION TO HANDLE DIFFERENT NAMING CONVENTIONS FOR STATES
 const TO_NAME = 1;
 const TO_ABBREVIATED = 2;
 
@@ -85,6 +94,151 @@ function convertRegion(input, to) {
     }
 }
 
+function legend({
+    color,
+    title,
+    tickSize = 6,
+    width = 320,
+    height = 44 + tickSize,
+    marginTop = 18,
+    marginRight = 0,
+    marginBottom = 16 + tickSize,
+    marginLeft = 10,
+    ticks = width / 64,
+    tickFormat,
+    tickValues
+} = {}) {
+
+    let tickAdjust = g => g.selectAll(".tick line").attr("y1", marginTop + marginBottom - height);
+    let x;
+
+    // Continuous
+    if (color.interpolate) {
+        const n = Math.min(color.domain().length, color.range().length);
+
+        x = color.copy().rangeRound(d3.quantize(d3.interpolate(marginLeft, width - marginRight), n));
+
+        svg.append("image")
+            .attr("x", marginLeft)
+            .attr("y", marginTop)
+            .attr("width", width - marginLeft - marginRight)
+            .attr("height", height - marginTop - marginBottom)
+            .attr("preserveAspectRatio", "none")
+            .attr("xlink:href", ramp(color.copy().domain(d3.quantize(d3.interpolate(0, 1), n))).toDataURL());
+    }
+
+    // Sequential
+    else if (color.interpolator) {
+        x = Object.assign(color.copy()
+            .interpolator(d3.interpolateRound(marginLeft, width - marginRight)), {
+            range() {
+                return [marginLeft, width - marginRight];
+            }
+        });
+
+        svg.append("image")
+            .attr("x", marginLeft)
+            .attr("y", mapHeight - margin.bottom)
+            .attr("width", width - marginLeft - marginRight)
+            .attr("height", height - marginTop - marginBottom)
+            .attr("preserveAspectRatio", "none")
+            .attr("xlink:href", ramp(color.interpolator()).toDataURL());
+
+        // scaleSequentialQuantile doesn’t implement ticks or tickFormat.
+        if (!x.ticks) {
+            if (tickValues === undefined) {
+                const n = Math.round(ticks + 1);
+                tickValues = d3.range(n).map(i => d3.quantile(color.domain(), i / (n - 1)));
+            }
+            if (typeof tickFormat !== "function") {
+                tickFormat = d3.format(tickFormat === undefined ? ",f" : tickFormat);
+            }
+        }
+    }
+
+    // Threshold
+    else if (color.invertExtent) {
+        const thresholds = color.thresholds ? color.thresholds() // scaleQuantize
+            :
+            color.quantiles ? color.quantiles() // scaleQuantile
+                :
+                color.domain(); // scaleThreshold
+
+        const thresholdFormat = tickFormat === undefined ? d => d :
+            typeof tickFormat === "string" ? d3.format(tickFormat) :
+                tickFormat;
+
+        x = d3.scaleLinear()
+            .domain([-1, color.range().length - 1])
+            .rangeRound([marginLeft, width - marginRight]);
+
+        svg.append("g")
+            .selectAll("rect")
+            .data(color.range())
+            .join("rect")
+            .attr("x", (d, i) => x(i - 1))
+            .attr("y", mapHeight - margin.bottom)
+            .attr("width", (d, i) => x(i) - x(i - 1))
+            .attr("height", height - marginTop - marginBottom)
+            .attr("fill", d => d);
+
+        tickValues = d3.range(thresholds.length);
+        tickFormat = i => thresholdFormat(thresholds[i], i);
+    }
+
+    // Ordinal
+    else {
+        x = d3.scaleBand()
+            .domain(color.domain())
+            .rangeRound([marginLeft, width - marginRight]);
+
+        svg.append("g")
+            .selectAll("rect")
+            .data(color.domain())
+            .join("rect")
+            .attr("x", x)
+            .attr("y", mapHeight - margin.bottom)
+            .attr("width", Math.max(0, x.bandwidth() - 1))
+            .attr("height", height - marginTop - marginBottom)
+            .attr("fill", color);
+
+        tickAdjust = () => { };
+    }
+
+    svg.append("g")
+        .attr("transform", `translate(0,${mapHeight - margin.bottom + 10})`)
+        .call(d3.axisBottom(x)
+            .ticks(ticks, typeof tickFormat === "string" ? tickFormat : undefined)
+            .tickFormat(typeof tickFormat === "function" ? tickFormat : undefined)
+            .tickSize(tickSize)
+            .tickValues(tickValues))
+        .call(tickAdjust)
+        .call(g => g.select(".domain").remove())
+        .call(g => g.append("text")
+            .attr("x", marginLeft)
+            .attr("y", marginTop + marginBottom - height - 6)
+            .attr("fill", "currentColor")
+            .attr("text-anchor", "start")
+            .attr("font-weight", "bold")
+            .text(title));
+
+    return svg.node();
+}
+
+function ramp(color, n = 256) {
+    var canvas = document.createElement('canvas');
+    canvas.width = n;
+    canvas.height = 1;
+    const context = canvas.getContext("2d");
+    for (let i = 0; i < n; ++i) {
+        context.fillStyle = color(i / (n - 1));
+        context.fillRect(i, 0, 1, 1);
+    }
+    return canvas;
+}
+
+
+
 /*
 LOADING DATA FROM MULTIPLE FILES
 
@@ -134,17 +288,23 @@ Promise.all(promises).then(function (data) {
 
     //DEFINING DATA VARIABLES
     const worshipData = data[0];
-    
+    worshipData.forEach((d) => {
+        if (isNaN(d.members)) {
+            d.members = 0;
+        }
+    })
+    console.log(worshipData)
+
     let nested = d3.nest()
-        .key(d=>d.state)
+        .key(d => d.state)
         .key(d => d.county)
-        .rollup(v => v.length)
+        .rollup(d => d3.sum(d, g => g.members))
         .entries(worshipData)
 
 
     const counties = topojson.feature(data[1], data[1].objects.counties)
     const states = topojson.feature(data[1], data[1].objects.states)
-    
+
     counties.features.forEach((d) => {
         d.countyName = d.properties.name.toUpperCase();
     })
@@ -164,11 +324,11 @@ Promise.all(promises).then(function (data) {
         let state = d.state;
         nested.forEach((v) => {
             v.values.forEach((p) => {
-                if(name === p.key && state === v.key) {
+                if (name === p.key && state === v.key) {
                     d.value = p.value
-                } 
+                }
             })
-            
+
         })
         d.perCapita = d.value / d.pop;
         if (isNaN(d.perCapita)) {
@@ -177,28 +337,28 @@ Promise.all(promises).then(function (data) {
     })
     console.log(mergedArr)
 
+    const max = d3.max(mergedArr, d => d.perCapita);
+    const min = d3.min(mergedArr, d => d.perCapita);
+
+
     //COLOR SCALE
     const color = d3.scaleSequential()
-        .interpolator(d3.interpolatePlasma)
-        .domain([d3.max(mergedArr, d => d.perCapita),-0.0005])
+        .interpolator(d3.interpolateCividis)
+        .domain([min, max])
 
-    /*
-    DEFINING THE DIMENSIONS OF THE SVG and CREATING THE SVG CANVAS
-    */
-    const width = document.querySelector("#chart").clientWidth;
-    const height = document.querySelector("#chart").clientHeight;
-    const svg = d3.select("#chart")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
-
+    legend({
+        color: d3.scaleSequential([min, max], d3.interpolateCividis),
+        title: "Membership Per Capita"
+    })
 
     /*
     MAKE THE BASE MAP
     */
 
     let path = d3.geoPath();
-    let g = svg.append("g").attr("transform", `translate(100,100)`)
+    let g = svg.append("g")
+        .attr("transform", "translate(100,100)")
+        .attr("transform", "scale(0.9)")
 
 
     // Bind TopoJSON data
@@ -212,8 +372,8 @@ Promise.all(promises).then(function (data) {
     //ADD THE STATE BOUNDARIES IN
     g.append("path")
         .datum(topojson.mesh(data[1], data[1].objects.states, (a, b) => a !== b))
-      .attr("fill", "none")
-      .attr("stroke", "white")
+        .attr("fill", "none")
+        .attr("stroke", "white")
         .attr("d", path);
 
 
