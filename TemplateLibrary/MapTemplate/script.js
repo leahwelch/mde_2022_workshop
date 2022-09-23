@@ -138,7 +138,7 @@ function legend({
 
         svg.append("image")
             .attr("x", marginLeft)
-            .attr("y", mapHeight - margin.bottom)
+            .attr("y", mapHeight - 30)
             .attr("width", width - marginLeft - marginRight)
             .attr("height", height - marginTop - marginBottom)
             .attr("preserveAspectRatio", "none")
@@ -177,7 +177,7 @@ function legend({
             .data(color.range())
             .join("rect")
             .attr("x", (d, i) => x(i - 1))
-            .attr("y", mapHeight - margin.bottom)
+            .attr("y", mapHeight - 30)
             .attr("width", (d, i) => x(i) - x(i - 1))
             .attr("height", height - marginTop - marginBottom)
             .attr("fill", d => d);
@@ -197,7 +197,7 @@ function legend({
             .data(color.domain())
             .join("rect")
             .attr("x", x)
-            .attr("y", mapHeight - margin.bottom)
+            .attr("y", mapHeight - 30)
             .attr("width", Math.max(0, x.bandwidth() - 1))
             .attr("height", height - marginTop - marginBottom)
             .attr("fill", color);
@@ -206,7 +206,7 @@ function legend({
     }
 
     svg.append("g")
-        .attr("transform", `translate(0,${mapHeight - margin.bottom + 10})`)
+        .attr("transform", `translate(0,${mapHeight - 20})`)
         .call(d3.axisBottom(x)
             .ticks(ticks, typeof tickFormat === "string" ? tickFormat : undefined)
             .tickFormat(typeof tickFormat === "function" ? tickFormat : undefined)
@@ -358,7 +358,7 @@ Promise.all(promises).then(function (data) {
     let path = d3.geoPath();
     let g = svg.append("g")
         .attr("transform", "translate(100,100)")
-        .attr("transform", "scale(0.9)")
+        .attr("transform", "scale(0.6)")
 
 
     // Bind TopoJSON data

@@ -10,7 +10,7 @@ html, body {
 #container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 90vh;
   margin: 0px;
   padding: 0px;
 }
@@ -23,6 +23,6 @@ h2 {
 
 #chart {
   width: 90%;
-  height: 90vh;
+  height: 100%;
   margin-left: 50px;
 }
