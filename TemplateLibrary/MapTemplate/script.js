@@ -343,11 +343,11 @@ Promise.all(promises).then(function (data) {
 
     //COLOR SCALE
     const color = d3.scaleSequential()
-        .interpolator(d3.interpolateCividis)
+        .interpolator(d3.interpolateBlues)
         .domain([min, max])
 
     legend({
-        color: d3.scaleSequential([min, max], d3.interpolateCividis),
+        color: d3.scaleSequential([min, max], d3.interpolateBlues),
         title: "Membership Per Capita"
     })
 
